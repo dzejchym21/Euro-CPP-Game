@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include "Physics.hpp"
+#include "Pitch.hpp"
 
 int main() {
     const int screenWidth = 1280;
@@ -7,9 +8,16 @@ int main() {
 
     InitWindow(screenWidth, screenHeight, "Physics Test");
     SetTargetFPS(60);
+    Font euroFont = LoadFont("assets/fonts/Qatar2022-Bold.otf");
 
+    Pitch pitch;
+    Rectangle bounds = pitch.getBounds();
     Puck playerPuck({400.0f, 300.0f}, TeamSide::Player, 10);
     Ball ball({640.0f, 360.0f});
+
+    float centerX = bounds.x + bounds.width / 2.0f;
+    float centerY = bounds.y + bounds.height / 2.0f;
+
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         float acc = 900.0f;
@@ -27,21 +35,33 @@ int main() {
             ball.reset({640.0f, 360.0f});
         }
         updateMovement(playerPuck, dt);
-        updateMovement(ball, dt);
-
+        pitch.handleCollision(playerPuck, false);
         resolveCollision(playerPuck, ball);
 
-        // 4. Rysowanie
-        BeginDrawing();
-        ClearBackground(DARKGREEN);
+        updateMovement(ball, dt);
+        pitch.handleCollision(ball, true);
 
-        DrawText("Strzalki: sterowanie kapslem | SPACJA: mocny strzal w prawo | R: reset", 20, 20, 20, WHITE);
+        BeginDrawing();
+        ClearBackground(DARKBLUE);
+
+        DrawRectangleRec(bounds, {46, 139, 57, 255});
+        DrawRectangleLinesEx(bounds, 4.0f, WHITE);
+        DrawLineEx({centerX, bounds.y}, {centerX, bounds.y + bounds.height}, 4.0f, WHITE);
+        DrawCircleLines(centerX, centerY, 75.0f, WHITE);
+        DrawCircle(centerX, centerY, 6.0f, WHITE);
+
+        DrawTextEx(euroFont, "TEST PITCH", (Vector2){20.0f, 20.0f}, 40, 2.0f, WHITE);
 
         DrawCircleV(playerPuck.getPosition(), playerPuck.getRadius(), BLUE);
         DrawCircleLinesV(playerPuck.getPosition(), playerPuck.getRadius(), WHITE);
 
         DrawCircleV(ball.getPosition(), ball.getRadius(), WHITE);
         DrawCircleLinesV(ball.getPosition(), ball.getRadius(), BLACK);
+
+        for (const auto& post : pitch.getGoalPosts()) {
+            DrawCircleV(post, pitch.getPostRadius(), WHITE);
+            DrawCircleLinesV(post, pitch.getPostRadius(), BLACK);
+        }
 
         EndDrawing();
     }
