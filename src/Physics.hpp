@@ -4,9 +4,9 @@
 #include <cmath>
 #include <string>
 
-enum class TeamSide {
-    Player,
-    AI
+enum class Side {
+    Left,
+    Right
 };
 
 template <typename T>
@@ -25,11 +25,11 @@ private:
     Vector2 velocity {0.0f, 0.0f};
     float radius = 26.0f;
     float mass = 2.0f;
-    TeamSide team;
+    Side team;
     int shirtNumber;
 
 public:
-    Puck(Vector2 startPos, TeamSide side, int number)
+    Puck(Vector2 startPos, Side side, int number)
         : position(startPos), team(side), shirtNumber(number) {}
 
     void kick(Vector2 direction, float power) {
@@ -45,7 +45,7 @@ public:
     Vector2 getVelocity() const { return velocity; }
     float getRadius() const { return radius; }
     float getMass() const { return mass; }
-    TeamSide getTeam() const { return team; }
+    Side getTeam() const { return team; }
     int getShirtNumber() const { return shirtNumber; }
 
     void setPosition(Vector2 pos) { position = pos;}

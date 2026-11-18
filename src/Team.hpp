@@ -5,11 +5,6 @@
 #include <span>
 #include <string>
 
-enum class Side {
-    Left,
-    Right
-};
-
 enum class Formation {
     F1_2_2,
     F1_3_1
@@ -20,7 +15,6 @@ private:
     std::string name;
     std::string shortName;
     Side side;
-    TeamSide teamSide;
     Formation formation;
     Texture2D puckTexture;
     Texture2D flagTexture;
@@ -29,19 +23,18 @@ public:
     Team(std::string name,
         std::string shortName,
         Side side,
-        TeamSide teamSide,
         Formation formation,
         Texture2D puckTexture,
         Texture2D flagTexture)
             : name(name), shortName(shortName),
-            side(side), formation(formation), teamSide(teamSide),
+            side(side), formation(formation),
             puckTexture(puckTexture), flagTexture(flagTexture),
             pucks{{
-                Puck({0.0f, 0.0f}, teamSide, 1),
-                Puck({0.0f, 0.0f}, teamSide, 4),
-                Puck({0.0f, 0.0f}, teamSide, 7),
-                Puck({0.0f, 0.0f}, teamSide, 9),
-                Puck({0.0f, 0.0f}, teamSide, 10)
+                Puck({0.0f, 0.0f}, side, 1),
+                Puck({0.0f, 0.0f}, side, 4),
+                Puck({0.0f, 0.0f}, side, 7),
+                Puck({0.0f, 0.0f}, side, 9),
+                Puck({0.0f, 0.0f}, side, 10)
             }} {}
 
     void setupFormation(Rectangle bounds) {
@@ -52,11 +45,19 @@ public:
 
         if (formation == Formation::F1_2_2) {
             positions = {{
-                {bounds.x + 60.0f, centerY },
+                {bounds.x + 45.0f, centerY },
                 {bounds.x + 210.0f, centerY - 120.0f},
                 {bounds.x + 210.0f, centerY + 120.0f},
                 {bounds.x + 370.0f, centerY - 80.0f},
                 {bounds.x + 370.0f, centerY + 80.0f}
+            }};
+        } else if (formation == Formation::F1_3_1) {
+            positions = {{
+                {bounds.x + 45.0f, centerY },
+                {bounds.x + 200.0f, centerY - 160.0f},
+                {bounds.x + 200.0f, centerY },
+                {bounds.x + 200.0f, centerY + 160.0f},
+                {bounds.x + 370.0f, centerY }
             }};
         }
 
@@ -96,7 +97,6 @@ public:
     std::span<Puck> getPucks() { return pucks; }
     std::span<const Puck> getPucks() const { return pucks; }
     Side getSide() const { return side; }
-    TeamSide getTeamSide() const { return teamSide; }
     const std::string& getShortName() const { return shortName; }
     Texture2D getFlagTexture() const { return flagTexture; }
 };

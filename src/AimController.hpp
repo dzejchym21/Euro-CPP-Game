@@ -14,7 +14,7 @@ private:
     float maxPower = 1150.0f;
 
 public:
-    bool update(std::span<Puck> pucks, TeamSide allowedTeam, bool canShoot) {
+    bool update(std::span<Puck> pucks, Side allowedTeam, bool canShoot) {
         if (!canShoot) {
             selectedPuck = nullptr;
             currentPull = {0.0f, 0.0f};
