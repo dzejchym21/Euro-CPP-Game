@@ -1,6 +1,8 @@
 #include "raylib.h"
 #include "Physics.hpp"
 #include "Pitch.hpp"
+#include "AimController.hpp"
+#include <vector>
 
 int main() {
     const int screenWidth = 1280;
@@ -19,31 +21,29 @@ int main() {
 
     Pitch pitch;
     Rectangle bounds = pitch.getBounds();
-    Puck playerPuck({400.0f, 300.0f}, TeamSide::Player, 10);
-    Ball ball({640.0f, 360.0f});
+    AimController aim;
+    std::vector<Puck> pucks;
+    pucks.emplace_back(Vector2{400.0f, 360.0f}, TeamSide::Player, 10);
 
     float centerX = bounds.x + bounds.width / 2.0f;
     float centerY = bounds.y + bounds.height / 2.0f;
 
+    Ball ball({centerX, centerY});
+
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
-        float acc = 900.0f;
-        Vector2 vel = playerPuck.getVelocity();
 
-        if (IsKeyDown(KEY_RIGHT)) vel.x += acc * dt;
-        if (IsKeyDown(KEY_LEFT)) vel.x -= acc * dt;
-        if (IsKeyDown(KEY_DOWN)) vel.y += acc * dt;
-        if (IsKeyDown(KEY_UP)) vel.y -= acc * dt;
+        bool canShoot = !pucks[0].isMoving() && !ball.isMoving();
+        aim.update(pucks, TeamSide::Player, canShoot);
 
-        playerPuck.setVelocity(vel);
         if (IsKeyPressed(KEY_R)) {
-            playerPuck.setPosition({400.0f, 360.0f});
-            playerPuck.setVelocity({0.0f, 0.0f});
+            pucks[0].setPosition({400.0f, 360.0f});
+            pucks[0].setVelocity({0.0f, 0.0f});
             ball.reset({640.0f, 360.0f});
         }
-        updateMovement(playerPuck, dt);
-        pitch.handleCollision(playerPuck, false);
-        resolveCollision(playerPuck, ball);
+        updateMovement(pucks[0], dt);
+        pitch.handleCollision(pucks[0], false);
+        resolveCollision(pucks[0], ball);
 
         updateMovement(ball, dt);
         pitch.handleCollision(ball, true);
@@ -65,8 +65,8 @@ int main() {
 
         DrawTextEx(euroFont, TextFormat("%d  :  %d", scoreLeft, scoreRight), {centerX - 60.0f, 35.0f}, 48, 2.0f, WHITE);
 
-        Vector2 pos = playerPuck.getPosition();
-        float r = playerPuck.getRadius();
+        Vector2 pos = pucks[0].getPosition();
+        float r = pucks[0].getRadius();
 
         DrawCircleV({ pos.x + 4.0f, pos.y + 6.0f }, r, Fade(BLACK, 0.35f));
 
@@ -74,6 +74,7 @@ int main() {
         Rectangle dst = { pos.x, pos.y, r * 2.0f, r * 2.0f };
         Vector2 origin = { r, r };
 
+        aim.draw();
         DrawTexturePro(puckTex, src, dst, origin, 0.0f, WHITE);
         DrawCircleLinesV(pos, r, BLACK);
 

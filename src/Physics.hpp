@@ -81,7 +81,7 @@ public:
 };
 
 template <Collidable T>
-void updateMovement(T& obj, float dt, float friction = 0.985f) {
+void updateMovement(T& obj, float dt, float friction = 0.98f) {
     Vector2 pos = obj.getPosition();
     Vector2 vel = obj.getVelocity();
 
