@@ -92,6 +92,19 @@ public:
         obj.setVelocity(vel);
     }
 
+    GoalResult checkGoal(const Ball& ball) const {
+        Vector2 pos = ball.getPosition();
+        float r = ball.getRadius();
+
+        if (pos.x + r < bounds.x && pos.y > goalTopY && pos.y < goalBottomY) {
+            return GoalResult::RightTeamScored;
+        }
+        if (pos.x - r > bounds.x + bounds.width && pos.y > goalTopY && pos.y < goalBottomY) {
+            return GoalResult::LeftTeamScored;
+        }
+        return GoalResult::None;
+    }
+
     Rectangle getBounds() const { return bounds; }
     float getGoalTopY() const { return goalTopY; }
     float getGoalBottomY() const { return goalBottomY; }
