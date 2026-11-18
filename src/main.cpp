@@ -2,7 +2,7 @@
 #include "Physics.hpp"
 #include "Pitch.hpp"
 #include "AimController.hpp"
-#include <vector>
+#include "Team.hpp"
 
 int main() {
     const int screenWidth = 1280;
@@ -16,34 +16,46 @@ int main() {
     Font euroFont = LoadFont("assets/fonts/Qatar2022-Bold.otf");
     Texture2D pitchTex = LoadTexture("assets/pitch.png");
     SetTextureFilter(pitchTex, TEXTURE_FILTER_BILINEAR);
+
     Texture2D puckTex = LoadTexture("assets/pucks/pol.png");
     SetTextureFilter(puckTex, TEXTURE_FILTER_BILINEAR);
 
     Pitch pitch;
     Rectangle bounds = pitch.getBounds();
     AimController aim;
-    std::vector<Puck> pucks;
-    pucks.emplace_back(Vector2{400.0f, 360.0f}, TeamSide::Player, 10);
+
+    Team leftTeam("Poland", "POL", Side::Left, TeamSide::Player, Formation::F1_2_2, puckTex, puckTex);
+
+    leftTeam.setupFormation(bounds);
 
     float centerX = bounds.x + bounds.width / 2.0f;
     float centerY = bounds.y + bounds.height / 2.0f;
-
     Ball ball({centerX, centerY});
+
+    TeamSide currentTurn = TeamSide::Player;
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
-        bool canShoot = !pucks[0].isMoving() && !ball.isMoving();
-        aim.update(pucks, TeamSide::Player, canShoot);
+        bool anyMoving = ball.isMoving() || leftTeam.isAnyPuckMoving();
 
-        if (IsKeyPressed(KEY_R)) {
-            pucks[0].setPosition({400.0f, 360.0f});
-            pucks[0].setVelocity({0.0f, 0.0f});
-            ball.reset({640.0f, 360.0f});
+        Team& activeTeam = (currentTurn == TeamSide::Player) ? leftTeam : leftTeam;
+        if (aim.update(activeTeam.getPucks(), currentTurn, !anyMoving)) {
+            //currentTurn = (currentTurn == TeamSide::Player) ? TeamSide::AI : TeamSide::Player;
         }
-        updateMovement(pucks[0], dt);
-        pitch.handleCollision(pucks[0], false);
-        resolveCollision(pucks[0], ball);
+
+        auto leftPucks = leftTeam.getPucks();
+        for (auto& puck : leftPucks) {
+            updateMovement(puck, dt);
+            pitch.handleCollision(puck, false);
+            resolveCollision(puck, ball);
+        }
+
+        for (std::size_t i = 0; i < leftPucks.size(); ++i) {
+            for (std::size_t j = i + 1; j < leftPucks.size(); ++j) {
+                resolveCollision(leftPucks[i], leftPucks[j]);
+            }
+        }
 
         updateMovement(ball, dt);
         pitch.handleCollision(ball, true);
@@ -63,20 +75,10 @@ int main() {
         Rectangle sourceRect = { 0.0f, 0.0f, (float)pitchTex.width, (float)pitchTex.height };
         DrawTexturePro(pitchTex, sourceRect, bounds, { 0.0f, 0.0f }, 0.0f, WHITE);
 
-        DrawTextEx(euroFont, TextFormat("%d  :  %d", scoreLeft, scoreRight), {centerX - 60.0f, 35.0f}, 48, 2.0f, WHITE);
-
-        Vector2 pos = pucks[0].getPosition();
-        float r = pucks[0].getRadius();
-
-        DrawCircleV({ pos.x + 4.0f, pos.y + 6.0f }, r, Fade(BLACK, 0.35f));
-
-        Rectangle src = { 0.0f, 0.0f, (float)puckTex.width, (float)puckTex.height };
-        Rectangle dst = { pos.x, pos.y, r * 2.0f, r * 2.0f };
-        Vector2 origin = { r, r };
+        DrawTextEx(euroFont, TextFormat("%s %d  :  %d", leftTeam.getShortName().c_str(), scoreLeft, scoreRight), {centerX - 60.0f, 35.0f}, 48, 2.0f, WHITE);
 
         aim.draw();
-        DrawTexturePro(puckTex, src, dst, origin, 0.0f, WHITE);
-        DrawCircleLinesV(pos, r, BLACK);
+        leftTeam.drawPucks();
 
         DrawCircleV(ball.getPosition(), ball.getRadius(), WHITE);
         DrawCircleLinesV(ball.getPosition(), ball.getRadius(), BLACK);
