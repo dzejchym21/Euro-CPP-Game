@@ -1,18 +1,18 @@
 #include "raylib.h"
-#include "Physics.hpp"
-#include "Pitch.hpp"
-#include "AimController.hpp"
-#include "Team.hpp"
+#include "Match.hpp"
+#include <algorithm>
 
 int main() {
-    const int screenWidth = 1280;
-    const int screenHeight = 720;
+    const int virtualWidth = 1280;
+    const int virtualHeight = 720;
 
-    int scoreLeft = 0;
-    int scoreRight = 0;
-
-    InitWindow(screenWidth, screenHeight, "Physics Test");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(virtualWidth, virtualHeight, "Soccer Stars 5v5");
     SetTargetFPS(60);
+
+    RenderTexture2D target = LoadRenderTexture(virtualWidth, virtualHeight);
+    SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);
+
     Font euroFont = LoadFont("assets/fonts/Qatar2022-Bold.otf");
     Texture2D pitchTex = LoadTexture("assets/pitch.png");
     SetTextureFilter(pitchTex, TEXTURE_FILTER_BILINEAR);
@@ -22,102 +22,88 @@ int main() {
     Texture2D puckTex2 = LoadTexture("assets/pucks/gre.png");
     SetTextureFilter(puckTex2, TEXTURE_FILTER_BILINEAR);
 
-    Pitch pitch;
-    Rectangle bounds = pitch.getBounds();
-    AimController aim;
-
     Team leftTeam("Poland", "POL", Side::Left, Formation::F1_2_2, puckTex1, puckTex1);
     Team rightTeam("Greece", "GRE", Side::Right, Formation::F1_3_1, puckTex2, puckTex2);
 
-    leftTeam.setupFormation(bounds);
-    rightTeam.setupFormation(bounds);
-
-    float centerX = bounds.x + bounds.width / 2.0f;
-    float centerY = bounds.y + bounds.height / 2.0f;
-    Ball ball({centerX, centerY});
-
-    Side currentTurn = Side::Left;
+    MatchRules rules{ false, std::chrono::seconds(180), std::chrono::seconds(60) };
+    Match match(std::move(leftTeam), std::move(rightTeam), rules);
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
 
-        bool anyMoving = ball.isMoving() || leftTeam.isAnyPuckMoving() || rightTeam.isAnyPuckMoving();
+        float scale = std::min(
+            static_cast<float>(GetScreenWidth()) / virtualWidth,
+            static_cast<float>(GetScreenHeight()) / virtualHeight
+        );
+        float offsetX = (GetScreenWidth() - (virtualWidth * scale)) * 0.5f;
+        float offsetY = (GetScreenHeight() - (virtualHeight * scale)) * 0.5f;
 
-        Team& activeTeam = (currentTurn == Side::Left) ? leftTeam : rightTeam;
-        if (aim.update(activeTeam.getPucks(), currentTurn, !anyMoving)) {
-            currentTurn = (currentTurn == Side::Left) ? Side::Right : Side::Left;
-        }
+        Vector2 virtualMouse = {
+            (GetMousePosition().x - offsetX) / scale,
+            (GetMousePosition().y - offsetY) / scale
+        };
 
-        auto leftPucks = leftTeam.getPucks();
-        auto rightPucks = rightTeam.getPucks();
+        match.update(dt, virtualMouse);
 
-        for (auto& puck : leftPucks) {
-            updateMovement(puck, dt);
-            pitch.handleCollision(puck, false);
-            resolveCollision(puck, ball);
-        }
+        const auto& pitch = match.getPitch();
+        Rectangle bounds = pitch.getBounds();
+        float centerX = bounds.x + bounds.width / 2.0f;
 
-        for (auto& puck : rightPucks) {
-            updateMovement(puck, dt);
-            pitch.handleCollision(puck, false);
-            resolveCollision(puck, ball);
-        }
+        int totalSec = match.getDisplayMatchSeconds();
+        int minutes = totalSec / 60;
+        int seconds = totalSec % 60;
 
-        for (std::size_t i = 0; i < leftPucks.size(); ++i) {
-            for (std::size_t j = i + 1; j < leftPucks.size(); ++j) {
-                resolveCollision(leftPucks[i], leftPucks[j]);
-            }
-            for (std::size_t j = 0; j < rightPucks.size(); j++) {
-                resolveCollision(rightPucks[j], leftPucks[i]);
-            }
-        }
-
-        for (std::size_t i = 0; i < rightPucks.size(); ++i) {
-            for (std::size_t j = i + 1; j < rightPucks.size(); ++j) {
-                resolveCollision(rightPucks[i], rightPucks[j]);
-            }
-        }
-
-        updateMovement(ball, dt);
-        pitch.handleCollision(ball, true);
-
-        GoalResult goal = pitch.checkGoal(ball);
-        if (goal == GoalResult::LeftTeamScored) {
-            scoreLeft++;
-            ball.reset({centerX, centerY});
-            leftTeam.setupFormation(bounds);
-            rightTeam.setupFormation(bounds);
-            currentTurn = Side::Right;
-        } else if (goal == GoalResult::RightTeamScored) {
-            scoreRight++;
-            ball.reset({centerX, centerY});
-            leftTeam.setupFormation(bounds);
-            rightTeam.setupFormation(bounds);
-            currentTurn = Side::Left;
-        }
-
-        BeginDrawing();
+        BeginTextureMode(target);
         ClearBackground(DARKBLUE);
 
         Rectangle sourceRect = { 0.0f, 0.0f, (float)pitchTex.width, (float)pitchTex.height };
         DrawTexturePro(pitchTex, sourceRect, bounds, { 0.0f, 0.0f }, 0.0f, WHITE);
 
-        DrawTextEx(euroFont, TextFormat("%s %d  :  %d %s", leftTeam.getShortName().c_str(), scoreLeft, scoreRight, rightTeam.getShortName().c_str()), {centerX - 150.0f, 35.0f}, 48, 2.0f, WHITE);
+        DrawTextEx(euroFont,
+                   TextFormat("%s %d  :  %d %s",
+                              match.getLeftTeam().getShortName().c_str(),
+                              match.getScoreLeft(),
+                              match.getScoreRight(),
+                              match.getRightTeam().getShortName().c_str()),
+                   {centerX - 150.0f, 30.0f}, 46, 2.0f, WHITE);
 
-        aim.draw();
-        leftTeam.drawPucks();
-        rightTeam.drawPucks();
+        DrawTextEx(euroFont, TextFormat("%02d:%02d", minutes, seconds), {centerX - 42.0f, 76.0f}, 26, 2.0f, YELLOW);
 
-        DrawCircleV(ball.getPosition(), ball.getRadius(), WHITE);
-        DrawCircleLinesV(ball.getPosition(), ball.getRadius(), BLACK);
+        if (match.isFinished()) {
+            DrawTextEx(euroFont, "KONIEC MECZU!", {centerX - 160.0f, 330.0f}, 54, 2.0f, GOLD);
+        }
+
+        match.getAim().draw();
+
+        Vector2 bPos = match.getBall().getPosition();
+        float bR = match.getBall().getRadius();
+        DrawCircleV({ bPos.x + 3.0f, bPos.y + 4.0f }, bR, Fade(BLACK, 0.35f));
+        DrawCircleV(bPos, bR, WHITE);
+        DrawCircleLinesV(bPos, bR, BLACK);
+
+        match.getLeftTeam().drawPucks();
+        match.getRightTeam().drawPucks();
 
         for (const auto& post : pitch.getGoalPosts()) {
             DrawCircleV(post, pitch.getPostRadius(), WHITE);
             DrawCircleLinesV(post, pitch.getPostRadius(), BLACK);
         }
+        EndTextureMode();
 
+        BeginDrawing();
+        ClearBackground(BLACK);
+
+        Rectangle srcRec = { 0.0f, 0.0f, (float)target.texture.width, -(float)target.texture.height };
+        Rectangle dstRec = { offsetX, offsetY, virtualWidth * scale, virtualHeight * scale };
+        DrawTexturePro(target.texture, srcRec, dstRec, { 0.0f, 0.0f }, 0.0f, WHITE);
         EndDrawing();
     }
+
+    UnloadRenderTexture(target);
+    UnloadFont(euroFont);
+    UnloadTexture(pitchTex);
+    UnloadTexture(puckTex1);
+    UnloadTexture(puckTex2);
     CloseWindow();
     return 0;
 }

@@ -14,13 +14,13 @@ private:
     float maxPower = 1150.0f;
 
 public:
-    bool update(std::span<Puck> pucks, Side allowedTeam, bool canShoot) {
+    bool update(std::span<Puck> pucks, Side allowedTeam, bool canShoot, Vector2 mousePos) {
         if (!canShoot) {
             selectedPuck = nullptr;
             currentPull = {0.0f, 0.0f};
             return false;
         }
-        Vector2 mousePos = GetMousePosition();
+
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             for (auto& puck : pucks) {
                 if (puck.getTeam() == allowedTeam && CheckCollisionPointCircle(mousePos, puck.getPosition(), puck.getRadius())) {

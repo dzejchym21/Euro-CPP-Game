@@ -60,6 +60,7 @@ private:
     float mass = 1.0f;
 
 public:
+    Ball() = default;
     Ball(Vector2 startPos): position(startPos) {}
 
     void reset(Vector2 centerPos) {
